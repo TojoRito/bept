@@ -1,32 +1,23 @@
-import toml
 import warnings
 from copy import deepcopy
-from bept.gen.toml_in_converter import in_toml, toml_in
-from typing import Coroutine, Any
+from typing import Any, Coroutine
+
+import toml
 from textual import on
 from textual.app import App
-from textual.containers import Vertical, Horizontal, VerticalScroll
-from textual.widgets import (
-    Footer,
-    Label,
-    Checkbox,
-    RadioSet,
-    RadioButton,
-    TabbedContent,
-    Input,
-    TabPane,
-    Select,
-    Collapsible,
-    Static,
-    OptionList,
-)
+from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.widgets import (Checkbox, Collapsible, Footer, Input, Label,
+                             OptionList, RadioButton, RadioSet, Select, Static,
+                             TabbedContent, TabPane)
 from textual.widgets.option_list import Option
+
+from bept.gen.toml_in_converter import in_toml, toml_in
 
 # GLOBALS
 TAB_NAMES = ["Input", "Misc-Options", "Output-Settings"]
 possible_inputs = ["mg-auto", "mg-para", "mg-manual", "fe-manual", "mg-dummy"]
 mg_auto_def = {
-    "read": {"mol": ["pqr", "7y6i.pqr"]},
+    "read": {"mol": ["pqr", ""]},
     "elec": {
         "calculation-type": "",
         "dime": ["", "", ""],
@@ -55,14 +46,7 @@ data = dict()
 
 
 def generate_toml_file(input_file):
-    global \
-        data, \
-        input_file_name, \
-        write_commands, \
-        calcenergy, \
-        calcforce, \
-        selected_input, \
-        form
+    global data, input_file_name, write_commands, calcenergy, calcforce, selected_input, form
 
     in_toml(input_file)
     toml_input_file_name = input_file_name = input_file[:-3] + ".toml"
@@ -1358,7 +1342,6 @@ class Misc_options(Static):
 
     Attributes
     ----------
-    UPDATE THE FIRST ATTRIBUTE
     calcenergy : str
         Calculation Of Electrostatic Energy From A PBE Calculation
     calcforce : str
@@ -1432,23 +1415,15 @@ class Misc_options(Static):
 class Output_options(Static):
     """
     The Output Options Tab.
-
-    ...
-
-    Attributes
-    ----------
-    UPDATE ALL THE ATTRIBUTES
-    dime : list
-        Grid Points Per Processor
     """
 
     def compose(self):
         global selected_input
         # Checking if the follwing is present in the .in file and setting the values to default ones if absent
-        if "write-pot" in data["elec"]:
-            self.write_pot = data["elec"]["write-pot"]
-        else:
-            self.write_pot = ["dx", input_file_name[:-4] + ".pqr"]
+        self.format = "dx"
+        for i in data["elec"].items():
+            if "write" in i:
+                self.format = i[0]
 
         # Output-Options begin here
         with VerticalScroll():
@@ -1528,20 +1503,18 @@ class Output_options(Static):
             yield Label("Output")
             with Collapsible(title="FORMAT TO WRITE DATA:"):
                 with RadioSet(id="format"):
-                    yield RadioButton(
-                        "OpenDX", id="dx", value=(self.write_pot[0] == "dx")
-                    )
+                    yield RadioButton("OpenDX", id="dx", value=(self.format[0] == "dx"))
                     yield RadioButton(
                         "AVS UCD",
                         id="avs",
                         disabled=(selected_input != "fe-manual"),
-                        value=(self.write_pot[0] == "avs"),
+                        value=(self.format[0] == "avs"),
                     )
                     yield RadioButton(
                         "UBHD",
                         id="uhbd",
                         disabled=(selected_input == "fe-manual"),
-                        value=(self.write_pot[0] == "uhbd"),
+                        value=(self.format[0] == "uhbd"),
                     )
 
 
@@ -1551,14 +1524,7 @@ class InputApp(App):
         self.input_path = input_path
 
     # Initializations
-    global \
-        data, \
-        input_file_name, \
-        write_commands, \
-        calcenergy, \
-        calcforce, \
-        selected_input, \
-        form
+    global data, input_file_name, write_commands, calcenergy, calcforce, selected_input, form
     new_data = mg_auto_def
     cgcent = ["", "", ""]
     fgcent = ["", "", ""]
@@ -1781,6 +1747,10 @@ class InputApp(App):
 
     def action_quit(self) -> Coroutine[Any, Any, None]:
         """Triggers when the App is quit"""
+        self.new_data["read"]["mol"] = [
+            "pqr",
+            data["read"]["mol"][1].split(".")[0] + ".pqr",
+        ]
         self.new_data["elec"]["calcforce"] = calcforce
         self.new_data["elec"]["calcenergy"] = calcenergy
         for i in range(len(write_commands)):
@@ -1824,10 +1794,6 @@ class InputApp(App):
         self.query(Misc_options).remove()
         self.mount(Output_options())
 
-
-if __name__ == "__main__":
-    app = InputApp()
-    app.run()
 
 for i in InputApp.ion:
     if i.count("") == 2 or i.count("") == 1:

@@ -1,4 +1,3 @@
-import os
 import subprocess
 
 from beaupy import prompt
@@ -35,13 +34,13 @@ def p_interactive(pdb2pqr_cmd: str) -> str:
     return cmd
 
 
-def apbs_interactive(input_file: str) -> str:
+def apbs_interactive(input_cmd: str) -> str:
     """
     Interactive apbs execution on input command present in input_file.
     Args:
         input_file - input apbs file.
     """
-    apbs_template = f"apbs {input_file}"
+    apbs_template = f"{input_cmd}"
 
     CONSOLE.print(
         "Input the apbs command to run for APBS input file. You can edit this template command for ease. For more information on parameters, see apbs --help.",
@@ -51,16 +50,19 @@ def apbs_interactive(input_file: str) -> str:
     return cmd
 
 
-def p_exec(pdb2pqr_cmd: str, interative: bool = False, save: bool = True) -> None:
+def p_exec(pdb2pqr_cmd: str, interactive: bool = False, save: bool = True) -> int:
     """
     Execution of pdb2pqr flag on input command.
     Args:
         pdb2pqr_cmd - input pdb2pqr command
-        interative - flag for interactive mode
+        interactive - flag for interactive mode
         save - flag for saving command to history
+
+    Outputs:
+        return code of the process
     """
     cmd = pdb2pqr_cmd
-    if interative:
+    if interactive:
         cmd = p_interactive(pdb2pqr_cmd)
 
     if save:
@@ -73,7 +75,10 @@ def p_exec(pdb2pqr_cmd: str, interative: bool = False, save: bool = True) -> Non
             "Error in executing pdb2pqr command. Please check the command and try again.",
             style="red",
         )
-        return
+        return process.returncode
+
+    else:
+        CONSOLE.print("PDB2PQR command executed successfully!", style="green")
 
     # Get input filepath, which is text containing .pqr
     input_flag = next((arg for arg in cmd.split() if ".in" in arg), None)
@@ -82,21 +87,26 @@ def p_exec(pdb2pqr_cmd: str, interative: bool = False, save: bool = True) -> Non
             "PDB2PQR command coudn't find `.in` input file found in the command. Skipping cache creation.",
             style="red",
         )
-        return
+        return process.returncode
     input_filepath = input_flag.split("=")[1]
     cache_manager(input_filepath)
 
+    return process.returncode
 
-def apbs_exec(apbs_cmd: str, interative: bool = False, save: bool = True) -> None:
+
+def apbs_exec(apbs_cmd: str, interactive: bool = False, save: bool = True) -> int:
     """
     Execution of apbs command on input flag
     Args:
         apbs_cmd - input apbs command
-        interative - flag for interactive mode
+        interactive - flag for interactive mode
         save - flag for saving command to history
+
+    Outputs:
+        return code of the process
     """
     cmd = apbs_cmd
-    if interative:
+    if interactive:
         cmd = apbs_interactive(apbs_cmd)
 
     if save:
@@ -109,7 +119,10 @@ def apbs_exec(apbs_cmd: str, interative: bool = False, save: bool = True) -> Non
             "Error in executing APBS command. Please check the command and try again.",
             style="red",
         )
-        return
+        return process.returncode
+
+    else:
+        CONSOLE.print("APBS command executed successfully!", style="green")
     # Get input filepath, which is text containing .in
     input_filepath = next((arg for arg in cmd.split() if ".in" in arg), None)
     if input_filepath is None:
@@ -117,5 +130,7 @@ def apbs_exec(apbs_cmd: str, interative: bool = False, save: bool = True) -> Non
             "APBS command coudn't find `.in` input file found in the command. Skipping cache creation.",
             style="red",
         )
-        return
+        return process.returncode
     cache_manager(input_filepath)
+
+    return process.returncode
